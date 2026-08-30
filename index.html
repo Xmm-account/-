@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>商品数据分析</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #66758d;
+      --line: #dbe4ef;
+      --soft: #eef4fb;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #0f8c6b;
+      --amber: #b96110;
+      --red: #cf3f4f;
+      --shadow: 0 18px 48px rgba(26, 39, 68, 0.12);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 34%),
+        linear-gradient(315deg, rgba(15, 140, 107, 0.08), transparent 30%),
+        var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      min-height: calc(100vh - 56px);
+      overflow: hidden;
+      border: 1px solid rgba(219, 228, 239, 0.95);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow);
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      color: #f8fafc;
+      background: #111827;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      color: #0f172a;
+      background: linear-gradient(135deg, #60a5fa, #34d399);
+      font-weight: 900;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      color: #afbbce;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .upload {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+    }
+
+    .file-label {
+      display: grid;
+      place-items: center;
+      min-height: 42px;
+      padding: 0 12px;
+      border-radius: 8px;
+      color: #0f172a;
+      background: #ffffff;
+      font-weight: 800;
+    }
+
+    .file-name {
+      min-width: 0;
+      overflow: hidden;
+      color: #dce5f2;
+      font-size: 14px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 7px;
+      max-height: 150px;
+      overflow: auto;
+      padding: 2px;
+    }
+
+    .file-chip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 28px;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 4px 0 10px;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      font-size: 13px;
+    }
+
+    .file-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-file {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: transparent;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .remove-file:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .progress {
+      display: grid;
+      gap: 7px;
+    }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #60a5fa, #34d399);
+      transition: width 0.18s ease;
+    }
+
+    .progress-text {
+      color: #afbbce;
+      font-size: 12px;
+    }
+
+    .primary,
+    .ghost {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .primary {
+      color: #ffffff;
+      background: var(--blue);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.24);
+    }
+
+    .primary:hover {
+      background: var(--blue-dark);
+    }
+
+    .ghost {
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .ghost:hover {
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .rule-box {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .rule {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #dce5f2;
+      font-size: 13px;
+    }
+
+    .share-note {
+      padding: 13px 14px;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: rgba(37, 99, 235, 0.18);
+      border: 1px solid rgba(96, 165, 250, 0.26);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .rule span:last-child {
+      color: #9fb0c8;
+      text-align: right;
+    }
+
+    .main {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      background: rgba(248, 250, 252, 0.78);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: min(480px, 52vw);
+    }
+
+    h2 {
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 18px 22px;
+    }
+
+    .card {
+      min-height: 92px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 8px 24px rgba(26, 39, 68, 0.05);
+    }
+
+    .card strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .card span {
+      display: block;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      min-height: 0;
+      padding: 0 22px 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .search {
+      width: 100%;
+      min-height: 36px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .search:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.11);
+    }
+
+    .table-wrap {
+      max-height: calc(100vh - 322px);
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #3c4b63;
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    td {
+      color: #233047;
+    }
+
+    .money {
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #edf2f8;
+      color: #46576f;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag.good {
+      color: #047857;
+      background: #dcfce7;
+    }
+
+    .tag.warn {
+      color: #92400e;
+      background: #ffedd5;
+    }
+
+    .tag.bad {
+      color: #9f1239;
+      background: #ffe4eb;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      color: var(--muted);
+      text-align: center;
+      padding: 26px;
+    }
+
+    .logs {
+      display: grid;
+      gap: 8px;
+      max-height: 180px;
+      overflow: auto;
+      padding: 12px 14px;
+      color: #46576f;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .loading-error {
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #9f1239;
+      background: #ffe4eb;
+      border: 1px solid #fecdd3;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .log-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: min(100% - 20px, 760px);
+        padding: 10px 0;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        padding: 20px;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 16px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .workspace {
+        padding: 0 16px 16px;
+      }
+
+      .search {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="layout">
+      <aside class="side">
+        <div class="brand">
+          <div class="brand-mark">D</div>
+          <div>
+            <h1>商品数据分析</h1>
+            <p class="hint">上传表格后自动合并、筛选、导出</p>
+          </div>
+        </div>
+
+        <section class="upload">
+          <div class="file-row">
+            <label class="file-label" for="fileInput">添加文件</label>
+            <span class="file-name" id="fileNameText">未选择文件</span>
+          </div>
+          <input class="file-input" id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple>
+          <div class="file-list" id="fileList" aria-label="已添加文件"></div>
+          <div class="progress" aria-label="上传进度">
+            <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+            <div class="progress-text" id="progressText">等待添加文件</div>
+          </div>
+          <button class="primary" id="analyzeButton" type="button">开始分析</button>
+          <button class="ghost" id="exportButton" type="button">导出结果 Excel</button>
+        </section>
+
+        <section class="rule-box" aria-label="筛选规则">
+          <div class="rule"><strong>主表</strong><span>名称含“生意参谋”</span></div>
+          <div class="rule"><strong>匹配字段</strong><span>商品 ID</span></div>
+          <div class="rule"><strong>链接数据</strong><span>高级运营</span></div>
+          <div class="rule"><strong>聚划算</strong><span>商品状态</span></div>
+          <div class="rule"><strong>活动标记</strong><span>淘宝秒杀、百亿补贴</span></div>
+          <div class="rule"><strong>最终过滤</strong><span>去掉下架、支付金额 &lt; 1000</span></div>
+        </section>
+
+        <div class="share-note">可直接把这个 HTML 文件发给同事；对方用 Chrome、Edge 等浏览器打开即可使用。读取 Excel 时需要联网加载表格解析组件。</div>
+        <p class="hint">字段名会做宽松识别，例如“商品ID / item_id”和“支付金额 / 支付金额(元)”都能识别。</p>
+      </aside>
+
+      <section class="main">
+        <header class="topbar">
+          <div>
+            <h2>分析结果</h2>
+            <p class="status" id="statusText">请选择表格文件</p>
+          </div>
+          <div class="top-actions">
+            <input class="search" id="searchInput" type="search" placeholder="搜索商品 ID、标题、高级运营">
+          </div>
+        </header>
+
+        <section class="cards" aria-label="统计">
+          <div class="card"><strong id="rawCount">0</strong><span>生意参谋商品</span></div>
+          <div class="card"><strong id="resultCount">0</strong><span>筛选后商品</span></div>
+          <div class="card"><strong id="removedCount">0</strong><span>已过滤商品</span></div>
+          <div class="card"><strong id="payTotal">0</strong><span>筛选后支付金额</span></div>
+        </section>
+
+        <section class="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <strong>商品明细</strong>
+              <span class="status" id="visibleText">0 条</span>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+              <div class="empty">上传表格后，这里会显示筛选后的商品</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <strong>识别记录</strong>
+              <span class="status">文件与字段匹配</span>
+            </div>
+            <div class="logs" id="logList">
+              <div class="log-item">等待上传文件。</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const fileInput = document.querySelector("#fileInput");
+    const fileNameText = document.querySelector("#fileNameText");
+    const fileList = document.querySelector("#fileList");
+    const progressBar = document.querySelector("#progressBar");
+    const progressText = document.querySelector("#progressText");
+    const analyzeButton = document.querySelector("#analyzeButton");
+    const exportButton = document.querySelector("#exportButton");
+    const searchInput = document.querySelector("#searchInput");
+    const tableWrap = document.querySelector("#tableWrap");
+    const logList = document.querySelector("#logList");
+    const statusText = document.querySelector("#statusText");
+    const visibleText = document.querySelector("#visibleText");
+    const rawCount = document.querySelector("#rawCount");
+    const resultCount = document.querySelector("#resultCount");
+    const removedCount = document.querySelector("#removedCount");
+    const payTotal = document.querySelector("#payTotal");
+
+    let resultRows = [];
+    let selectedFiles = [];
+
+    const aliases = {
+      id: ["商品id", "商品 ID", "商品ID", "活动商品ID", "活动商品id", "商品编号", "宝贝id", "宝贝ID", "宝贝编号", "itemid", "item_id", "item id", "auctionid", "auction_id", "id"],
+      title: ["商品名称", "商品标题", "宝贝名称", "宝贝标题", "标题", "名称"],
+      pay: ["支付金额", "支付金额(元)", "支付金额（元）", "付款金额", "成交金额", "支付买家金额"],
+      operator: ["高级运营", "运营", "负责人", "高级运营负责人"],
+      status: ["商品状态", "上下架状态", "销售状态", "状态", "宝贝状态"]
+    };
+
+    function normalize(value) {
+      return String(value ?? "")
+        .replace(/\s+/g, "")
+        .replace(/[()（）_\-]/g, "")
+        .toLowerCase();
+    }
+
+    function findKey(row, names) {
+      const keys = Object.keys(row);
+      const normalizedNames = names.map(normalize);
+      return keys.find((key) => normalizedNames.includes(normalize(key)))
+        || keys.find((key) => normalizedNames.some((name) => normalize(key).includes(name)));
+    }
+
+    function getValue(row, names) {
+      const key = findKey(row, names);
+      return key ? row[key] : "";
+    }
+
+    function getId(row) {
+      const direct = cleanId(getValue(row, aliases.id));
+      if (direct) return direct;
+
+      const values = Object.values(row).map(cleanId).filter(Boolean);
+      return values.find((value) => /^\d{8,}$/.test(value)) || "";
+    }
+
+    function cleanId(value) {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      if (/^\d+(\.0+)?$/.test(text)) return text.replace(/\.0+$/, "");
+      return text;
+    }
+
+    function moneyValue(value) {
+      const num = Number(String(value ?? "").replace(/[^\d.-]/g, ""));
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function isOffShelf(status) {
+      return /下架|已下架|不可售|失效|删除/.test(String(status ?? ""));
+    }
+
+    function isBlockedJhsStatus(status) {
+      return /活动中|待审核|异常/.test(String(status ?? ""));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function formatLocalDate(date = new Date()) {
+      return `${date.getMonth() + 1}.${date.getDate()}`;
+    }
+
+    function classifySheet(fileName, sheetName) {
+      const name = `${fileName} ${sheetName}`;
+      if (name.includes("生意参谋")) return "business";
+      if (name.includes("链接数据")) return "link";
+      if (name.includes("聚划算")) return "jhs";
+      if (name.includes("淘宝秒杀") || name.includes("秒杀")) return "seckill";
+      if (name.includes("百亿补贴")) return "subsidy";
+      return "";
+    }
+
+    async function readWorkbook(file) {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array", raw: false });
+      return workbook.SheetNames.map((sheetName) => {
+        const sheet = workbook.Sheets[sheetName];
+        return {
+          fileName: file.name,
+          sheetName,
+          type: classifySheet(file.name, sheetName),
+          rows: parseSheetRows(sheet)
+        };
+      });
+    }
+
+    function parseSheetRows(sheet) {
+      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      if (!matrix.length) return [];
+
+      const headerIndex = findHeaderIndex(matrix);
+      const headers = matrix[headerIndex].map((cell, index) => {
+        const name = String(cell || "").trim();
+        return name || `空列${index + 1}`;
+      });
+
+      return matrix.slice(headerIndex + 1)
+        .filter((line) => line.some((cell) => String(cell ?? "").trim() !== ""))
+        .map((line) => {
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = line[index] ?? "";
+          });
+          return row;
+        });
+    }
+
+    function findHeaderIndex(matrix) {
+      let bestIndex = 0;
+      let bestScore = -1;
+      const groups = [aliases.id, aliases.title, aliases.pay, aliases.operator, aliases.status];
+
+      matrix.slice(0, 30).forEach((line, index) => {
+        const cells = line.map(normalize).filter(Boolean);
+        const score = groups.reduce((sum, group) => {
+          const names = group.map(normalize);
+          return sum + (cells.some((cell) => names.some((name) => cell.includes(name) || name.includes(cell))) ? 1 : 0);
+        }, 0);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      });
+
+      return bestIndex;
+    }
+
+    async function analyze() {
+      const files = selectedFiles;
+      if (!files.length) {
+        statusText.textContent = "请先添加表格文件";
+        return;
+      }
+
+      statusText.textContent = "正在读取表格...";
+      resultRows = [];
+      setProgress(0, `准备读取 ${files.length} 个文件`);
+      renderLogs(["正在读取文件。"]);
+
+      try {
+        const sheets = [];
+        for (let index = 0; index < files.length; index += 1) {
+          const fileSheets = await readWorkbook(files[index]);
+          sheets.push(...fileSheets);
+          setProgress(Math.round(((index + 1) / files.length) * 100), `已读取 ${index + 1} / ${files.length} 个文件`);
+        }
+        const logs = [];
+        const businessSheets = sheets.filter((sheet) => sheet.type === "business");
+        const linkSheets = sheets.filter((sheet) => sheet.type === "link");
+        const jhsSheets = sheets.filter((sheet) => sheet.type === "jhs");
+        const seckillSheets = sheets.filter((sheet) => sheet.type === "seckill");
+        const subsidySheets = sheets.filter((sheet) => sheet.type === "subsidy");
+
+        logs.push(`识别到生意参谋表 ${businessSheets.length} 个，链接数据表 ${linkSheets.length} 个，聚划算表 ${jhsSheets.length} 个，淘宝秒杀表 ${seckillSheets.length} 个，百亿补贴表 ${subsidySheets.length} 个。`);
+
+        const allBusinessRows = businessSheets.flatMap((sheet) => sheet.rows.map((row) => ({ row, source: `${sheet.fileName} / ${sheet.sheetName}` })));
+        const businessOffShelfCount = allBusinessRows.filter(({ row }) => isOffShelf(getValue(row, aliases.status))).length;
+        const businessRows = allBusinessRows.filter(({ row }) => !isOffShelf(getValue(row, aliases.status)));
+        const links = buildMap(linkSheets, aliases.id, (row) => ({
+          operator: getValue(row, aliases.operator),
+          status: getValue(row, aliases.status)
+        }));
+        const jhs = buildMap(jhsSheets, aliases.id, (row) => ({ status: getValue(row, aliases.status) }));
+        const seckillIds = buildSet(seckillSheets, aliases.id);
+        const subsidyIds = buildSet(subsidySheets, aliases.id);
+
+        logs.push(`生意参谋主表共 ${allBusinessRows.length} 行，已删除主表商品状态为已下架的 ${businessOffShelfCount} 行，剩余 ${businessRows.length} 行。`);
+        logs.push(`链接数据可匹配 ${links.size} 个商品 ID。`);
+        logs.push(`聚划算商品状态可匹配 ${jhs.size} 个商品 ID，淘宝秒杀命中池 ${seckillIds.size} 个，百亿补贴命中池 ${subsidyIds.size} 个。`);
+
+        const merged = businessRows.map(({ row, source }) => {
+          const id = getId(row);
+          const pay = moneyValue(getValue(row, aliases.pay));
+          const linkInfo = links.get(id) || {};
+          const jhsInfo = jhs.get(id) || {};
+          const businessStatus = getValue(row, aliases.status);
+          const offShelfStatus = [businessStatus, linkInfo.status, jhsInfo.status].find(isOffShelf);
+          return {
+            id,
+            title: getValue(row, aliases.title),
+            pay,
+            operator: linkInfo.operator || "",
+            jhsStatus: jhsInfo.status || "",
+            linkStatus: linkInfo.status || "",
+            businessStatus,
+            inSeckill: seckillIds.has(id),
+            inSubsidy: subsidyIds.has(id),
+            source,
+            removedReason: offShelfStatus
+              ? `已下架：${offShelfStatus}`
+              : pay < 1000
+                ? "支付金额小于 1000"
+                : isBlockedJhsStatus(jhsInfo.status)
+                  ? `聚划算状态排除：${jhsInfo.status}`
+                  : seckillIds.has(id)
+                    ? "淘宝秒杀命中"
+                    : subsidyIds.has(id)
+                      ? "百亿补贴命中"
+                      : ""
+          };
+        });
+
+        resultRows = merged.filter((row) => !row.removedReason && row.id);
+        sortResultRows();
+        const noId = merged.filter((row) => !row.id).length;
+        const lowPay = merged.filter((row) => row.id && row.pay < 1000).length;
+        const blockedJhs = merged.filter((row) => row.id && isBlockedJhsStatus(row.jhsStatus)).length;
+        const blockedSeckill = merged.filter((row) => row.id && row.inSeckill).length;
+        const blockedSubsidy = merged.filter((row) => row.id && row.inSubsidy).length;
+        const removed = merged.length - resultRows.length;
+
+        logs.push(`已过滤 ${removed} 行，其中无商品 ID ${noId} 行。`);
+        logs.push(`已去掉支付金额小于 1000 的商品 ID ${lowPay} 个。`);
+        logs.push(`已去掉聚划算状态为活动中、待审核或异常的商品 ID ${blockedJhs} 个。`);
+        logs.push(`已去掉淘宝秒杀命中的商品 ID ${blockedSeckill} 个，百亿补贴命中的商品 ID ${blockedSubsidy} 个。`);
+        renderStats(merged.length, resultRows.length, removed);
+        renderLogs(logs);
+        renderTable();
+        statusText.textContent = "分析完成";
+        setProgress(100, `分析完成，共读取 ${files.length} 个文件`);
+      } catch (error) {
+        statusText.textContent = "读取失败";
+        setProgress(0, "读取失败，请检查文件格式");
+        renderLogs([`读取表格失败：${error.message}`]);
+      }
+    }
+
+    function buildMap(sheets, idAliases, pick) {
+      const map = new Map();
+      sheets.forEach((sheet) => {
+        sheet.rows.forEach((row) => {
+          const id = getId(row);
+          if (id) map.set(id, { ...(map.get(id) || {}), ...pick(row) });
+        });
+      });
+      return map;
+    }
+
+    function buildSet(sheets, idAliases) {
+      const set = new Set();
+      sheets.forEach((sheet) => {
+        sheet.rows.forEach((row) => {
+          const id = getId(row);
+          if (id) set.add(id);
+        });
+      });
+      return set;
+    }
+
+    function updateFileNameText() {
+      if (!selectedFiles.length) {
+        fileNameText.textContent = "未选择文件";
+        fileList.innerHTML = "";
+        setProgress(0, "等待添加文件");
+        return;
+      }
+
+      fileNameText.textContent = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} 个文件`;
+      fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-chip">
+          <span title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <button class="remove-file" type="button" data-index="${index}" aria-label="移除文件">×</button>
+        </div>
+      `).join("");
+      setProgress(0, `已添加 ${selectedFiles.length} 个文件，等待分析`);
+    }
+
+    function addFiles(files) {
+      const existed = new Set(selectedFiles.map(fileKey));
+      files.forEach((file) => {
+        if (!existed.has(fileKey(file))) {
+          selectedFiles.push(file);
+          existed.add(fileKey(file));
+        }
+      });
+      fileInput.value = "";
+      updateFileNameText();
+    }
+
+    function fileKey(file) {
+      return `${file.name}-${file.size}-${file.lastModified}`;
+    }
+
+    function setProgress(percent, text) {
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = text;
+    }
+
+    function renderStats(raw, kept, removed) {
+      rawCount.textContent = raw;
+      resultCount.textContent = kept;
+      removedCount.textContent = removed;
+      payTotal.textContent = resultRows.reduce((sum, row) => sum + row.pay, 0).toLocaleString("zh-CN", {
+        maximumFractionDigits: 0
+      });
+    }
+
+    function renderLogs(logs) {
+      logList.innerHTML = logs.map((log) => `<div class="log-item">${escapeHtml(log)}</div>`).join("");
+    }
+
+    function renderTable() {
+      const keyword = normalize(searchInput.value);
+      const rows = resultRows.filter((row) => {
+        if (!keyword) return true;
+        return [row.id, row.title, row.operator, row.jhsStatus, row.source].some((value) => normalize(value).includes(keyword));
+      });
+
+      visibleText.textContent = `${rows.length} 条`;
+      if (!rows.length) {
+        tableWrap.innerHTML = '<div class="empty">没有符合条件的商品</div>';
+        return;
+      }
+
+      tableWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>商品 ID</th>
+              <th>商品名称</th>
+              <th>支付金额</th>
+              <th>高级运营</th>
+              <th>聚划算</th>
+              <th>淘宝秒杀</th>
+              <th>百亿补贴</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.id)}</td>
+                <td>${escapeHtml(row.title)}</td>
+                <td class="money">${row.pay.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}</td>
+                <td>${escapeHtml(row.operator || "否")}</td>
+                <td><span class="tag ${row.jhsStatus ? "good" : ""}">${escapeHtml(row.jhsStatus || "否")}</span></td>
+                <td><span class="tag ${row.inSeckill ? "good" : ""}">${row.inSeckill ? "是" : "否"}</span></td>
+                <td><span class="tag ${row.inSubsidy ? "good" : ""}">${row.inSubsidy ? "是" : "否"}</span></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function sortResultRows() {
+      resultRows.sort((a, b) => {
+        const operatorCompare = String(a.operator || "").localeCompare(String(b.operator || ""), "zh-CN", {
+          numeric: true,
+          sensitivity: "base"
+        });
+        if (operatorCompare !== 0) return operatorCompare;
+        return b.pay - a.pay;
+      });
+    }
+
+    function exportExcel() {
+      if (!resultRows.length) {
+        statusText.textContent = "没有可导出的结果";
+        return;
+      }
+
+      const rows = resultRows.map((row) => ({
+        商品ID: row.id,
+        商品名称: row.title,
+        支付金额: row.pay,
+        高级运营: row.operator || "否",
+        聚划算: row.jhsStatus || "否",
+        淘宝秒杀: row.inSeckill ? "是" : "否",
+        百亿补贴: row.inSubsidy ? "是" : "否"
+      }));
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      sheet["!cols"] = [
+        { wch: 18 },
+        { wch: 36 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 12 },
+        { wch: 12 }
+      ];
+      sheet["!autofilter"] = { ref: sheet["!ref"] };
+
+      const range = XLSX.utils.decode_range(sheet["!ref"]);
+      for (let col = range.s.c; col <= range.e.c; col += 1) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: 0, c: col })];
+        if (!cell) continue;
+        cell.s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "1D4ED8" } },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+
+      for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex += 1) {
+        const payCell = sheet[XLSX.utils.encode_cell({ r: rowIndex, c: 2 })];
+        if (payCell) {
+          payCell.t = "n";
+          payCell.z = "#,##0.00";
+        }
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, "分析结果");
+      XLSX.writeFile(workbook, `${formatLocalDate()}未报名活动链接.xlsx`);
+    }
+
+    if (!window.XLSX) {
+      statusText.textContent = "表格解析组件加载失败";
+      tableWrap.innerHTML = '<div class="loading-error">当前浏览器没有成功加载 Excel 解析组件。请确认能联网后刷新页面，或把这个工具改成离线版再发送给同事。</div>';
+    }
+
+    fileInput.addEventListener("change", () => addFiles(Array.from(fileInput.files || [])));
+    fileList.addEventListener("click", (event) => {
+      const button = event.target.closest(".remove-file");
+      if (!button) return;
+      selectedFiles.splice(Number(button.dataset.index), 1);
+      updateFileNameText();
+    });
+    analyzeButton.addEventListener("click", analyze);
+    exportButton.addEventListener("click", exportExcel);
+    searchInput.addEventListener("input", renderTable);
+  </script>
+</body>
+</html>
