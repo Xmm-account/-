@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>投图筛选工具</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #66758d;
+      --line: #d9e2ee;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #0f8c6b;
+      --red: #c2414b;
+      --soft: #edf4ff;
+      --shadow: 0 18px 48px rgba(26, 39, 68, 0.1);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1260px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      min-height: calc(100vh - 48px);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 22px;
+      color: #f8fafc;
+      background: #111827;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      color: #0f172a;
+      background: linear-gradient(135deg, #60a5fa, #34d399);
+      font-weight: 900;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      color: #afbbce;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .upload,
+    .rules {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .file-label {
+      display: grid;
+      place-items: center;
+      min-height: 40px;
+      border-radius: 8px;
+      color: #0f172a;
+      background: #ffffff;
+      font-weight: 800;
+    }
+
+    .file-name,
+    .progress-text {
+      min-width: 0;
+      overflow: hidden;
+      color: #dce5f2;
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 7px;
+      max-height: 160px;
+      overflow: auto;
+    }
+
+    .file-chip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 28px;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 4px 0 10px;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      font-size: 13px;
+    }
+
+    .file-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-file {
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: transparent;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .remove-file:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #60a5fa, #34d399);
+      transition: width 0.18s ease;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .primary,
+    .ghost {
+      min-height: 42px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 800;
+    }
+
+    .primary {
+      color: #ffffff;
+      background: var(--blue);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+    }
+
+    .primary:hover {
+      background: var(--blue-dark);
+    }
+
+    .ghost {
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .rule {
+      display: grid;
+      gap: 4px;
+      color: #dce5f2;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .rule span {
+      color: #9fb0c8;
+    }
+
+    .main {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      background: #f8fafc;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 78px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h2 {
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px 22px 0;
+    }
+
+    .tab {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #334155;
+      background: #ffffff;
+      font-weight: 800;
+    }
+
+    .tab.active {
+      color: #ffffff;
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px 22px;
+    }
+
+    .card {
+      min-height: 90px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .card strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .card span {
+      display: block;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      min-height: 0;
+      padding: 0 22px 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .table-wrap {
+      max-height: calc(100vh - 364px);
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #3c4b63;
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    td {
+      color: #233047;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #edf2f8;
+      color: #46576f;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag.good {
+      color: #047857;
+      background: #dcfce7;
+    }
+
+    .tag.bad {
+      color: #9f1239;
+      background: #ffe4eb;
+    }
+
+    .empty,
+    .loading-error {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      padding: 26px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .loading-error {
+      min-height: auto;
+      color: #9f1239;
+      background: #ffe4eb;
+      border-bottom: 1px solid #fecdd3;
+    }
+
+    .logs {
+      display: grid;
+      gap: 8px;
+      max-height: 180px;
+      overflow: auto;
+      padding: 12px 14px;
+      color: #46576f;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .log-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: min(100% - 20px, 760px);
+        padding: 10px 0;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        padding: 18px;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 16px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px;
+      }
+
+      .tabs {
+        padding: 16px 16px 0;
+      }
+
+      .workspace {
+        padding: 0 16px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="layout">
+      <aside class="side">
+        <div class="brand">
+          <div class="brand-mark">T</div>
+          <div>
+            <h1>投图筛选工具</h1>
+            <p class="hint">上传表格后按商品 ID 自动拆分导出</p>
+          </div>
+        </div>
+
+        <section class="upload">
+          <div class="file-row">
+            <label class="file-label" for="fileInput">添加文件</label>
+            <span class="file-name" id="fileNameText">未选择文件</span>
+          </div>
+          <input class="file-input" id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple>
+          <div class="file-list" id="fileList" aria-label="已添加文件"></div>
+          <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+          <div class="progress-text" id="progressText">等待添加文件</div>
+          <div class="actions">
+            <button class="primary" id="dailyButton" type="button">日常筛选</button>
+            <button class="primary" id="promoButton" type="button">大促筛选</button>
+          </div>
+          <button class="ghost" id="exportButton" type="button">导出当前结果</button>
+        </section>
+
+        <section class="rules" aria-label="筛选规则">
+          <div class="rule"><strong>日常筛选</strong><span>生意参谋当前在线商品，按焕新补贴待审核/活动中拆成国补和非国补。</span></div>
+          <div class="rule"><strong>大促筛选</strong><span>大促活动导出中的待审核/活动中/异常为大促商品，再按国补拆分四个工作表。</span></div>
+          <div class="rule"><strong>识别方式</strong><span>文件名或工作表名包含“生意参谋”“焕新补贴”“活动商品导出”。</span></div>
+        </section>
+
+        <p class="hint">字段名会做宽松识别，例如“商品ID / 活动商品ID / item_id”和“商品状态 / 活动状态”都能识别。</p>
+      </aside>
+
+      <section class="main">
+        <header class="topbar">
+          <div>
+            <h2>筛选结果</h2>
+            <p class="status" id="statusText">请选择表格文件</p>
+          </div>
+          <div class="status" id="modeText">当前未分析</div>
+        </header>
+
+        <nav class="tabs" id="tabs" aria-label="结果工作表"></nav>
+
+        <section class="cards" aria-label="统计">
+          <div class="card"><strong id="businessCount">0</strong><span>当前在线商品</span></div>
+          <div class="card"><strong id="subsidyCount">0</strong><span>国补商品</span></div>
+          <div class="card"><strong id="promoCount">0</strong><span>大促商品</span></div>
+          <div class="card"><strong id="exportCount">0</strong><span>当前导出条数</span></div>
+        </section>
+
+        <section class="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <strong id="tableTitle">商品 ID 明细</strong>
+              <span class="status" id="visibleText">0 条</span>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+              <div class="empty">上传表格后，点击左侧日常筛选或大促筛选。</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <strong>识别记录</strong>
+              <span class="status">文件与状态匹配</span>
+            </div>
+            <div class="logs" id="logList">
+              <div class="log-item">等待上传文件。</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const fileInput = document.querySelector("#fileInput");
+    const fileNameText = document.querySelector("#fileNameText");
+    const fileList = document.querySelector("#fileList");
+    const progressBar = document.querySelector("#progressBar");
+    const progressText = document.querySelector("#progressText");
+    const dailyButton = document.querySelector("#dailyButton");
+    const promoButton = document.querySelector("#promoButton");
+    const exportButton = document.querySelector("#exportButton");
+    const tabs = document.querySelector("#tabs");
+    const tableWrap = document.querySelector("#tableWrap");
+    const tableTitle = document.querySelector("#tableTitle");
+    const logList = document.querySelector("#logList");
+    const statusText = document.querySelector("#statusText");
+    const modeText = document.querySelector("#modeText");
+    const visibleText = document.querySelector("#visibleText");
+    const businessCount = document.querySelector("#businessCount");
+    const subsidyCount = document.querySelector("#subsidyCount");
+    const promoCount = document.querySelector("#promoCount");
+    const exportCount = document.querySelector("#exportCount");
+
+    let selectedFiles = [];
+    let currentResult = null;
+    let activeSheetName = "";
+
+    const aliases = {
+      id: ["商品id", "商品 ID", "商品ID", "活动商品ID", "活动商品id", "商品编号", "宝贝id", "宝贝ID", "itemid", "item_id", "item id", "auctionid", "auction_id", "id"],
+      title: ["商品名称", "商品标题", "宝贝名称", "宝贝标题", "标题", "名称"],
+      status: ["商品状态", "活动状态", "审核状态", "报名状态", "上下架状态", "销售状态", "状态", "宝贝状态"]
+    };
+
+    function normalize(value) {
+      return String(value ?? "")
+        .replace(/\s+/g, "")
+        .replace(/[()（）_\-]/g, "")
+        .toLowerCase();
+    }
+
+    function findKey(row, names) {
+      const keys = Object.keys(row);
+      const normalizedNames = names.map(normalize);
+      return keys.find((key) => normalizedNames.includes(normalize(key)))
+        || keys.find((key) => normalizedNames.some((name) => normalize(key).includes(name)));
+    }
+
+    function getValue(row, names) {
+      const key = findKey(row, names);
+      return key ? row[key] : "";
+    }
+
+    function cleanId(value) {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      if (/^\d+(\.0+)?$/.test(text)) return text.replace(/\.0+$/, "");
+      return text;
+    }
+
+    function getId(row) {
+      const direct = cleanId(getValue(row, aliases.id));
+      if (direct) return direct;
+      const values = Object.values(row).map(cleanId).filter(Boolean);
+      return values.find((value) => /^\d{8,}$/.test(value)) || "";
+    }
+
+    function isOnline(status) {
+      const text = String(status ?? "");
+      return /当前在线|在线|出售中|上架|销售中/.test(text) && !/下架|已下架|不可售|失效|删除/.test(text);
+    }
+
+    function isSubsidyStatus(status) {
+      return /待审核|活动中/.test(String(status ?? ""));
+    }
+
+    function isPromoStatus(status) {
+      return /待审核|活动中|异常/.test(String(status ?? ""));
+    }
+
+    function classifySheet(fileName, sheetName) {
+      const name = `${fileName} ${sheetName}`;
+      if (name.includes("生意参谋")) return "business";
+      if (name.includes("活动商品导出")) return "promo";
+      if (name.includes("焕新补贴") || name.includes("国补") || name.includes("百亿补贴")) return "subsidy";
+      return "";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    async function readWorkbook(file) {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array", raw: false });
+      return workbook.SheetNames.map((sheetName) => ({
+        fileName: file.name,
+        sheetName,
+        type: classifySheet(file.name, sheetName),
+        rows: parseSheetRows(workbook.Sheets[sheetName])
+      }));
+    }
+
+    function parseSheetRows(sheet) {
+      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      if (!matrix.length) return [];
+
+      const headerIndex = findHeaderIndex(matrix);
+      const headers = matrix[headerIndex].map((cell, index) => {
+        const name = String(cell || "").trim();
+        return name || `空列${index + 1}`;
+      });
+
+      return matrix.slice(headerIndex + 1)
+        .filter((line) => line.some((cell) => String(cell ?? "").trim() !== ""))
+        .map((line) => {
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = line[index] ?? "";
+          });
+          return row;
+        });
+    }
+
+    function findHeaderIndex(matrix) {
+      let bestIndex = 0;
+      let bestScore = -1;
+      const groups = [aliases.id, aliases.title, aliases.status];
+
+      matrix.slice(0, 30).forEach((line, index) => {
+        const cells = line.map(normalize).filter(Boolean);
+        const score = groups.reduce((sum, group) => {
+          const names = group.map(normalize);
+          return sum + (cells.some((cell) => names.some((name) => cell.includes(name) || name.includes(cell))) ? 1 : 0);
+        }, 0);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      });
+
+      return bestIndex;
+    }
+
+    async function loadSheets() {
+      const files = selectedFiles;
+      if (!files.length) throw new Error("请先添加表格文件");
+      if (!window.XLSX) throw new Error("Excel 解析组件未加载，请确认网络可访问 cdn.jsdelivr.net 后刷新页面");
+
+      const sheets = [];
+      for (let index = 0; index < files.length; index += 1) {
+        const fileSheets = await readWorkbook(files[index]);
+        sheets.push(...fileSheets);
+        setProgress(Math.round(((index + 1) / files.length) * 100), `已读取 ${index + 1} / ${files.length} 个文件`);
+      }
+      return sheets;
+    }
+
+    function rowsFrom(sheets, type) {
+      return sheets
+        .filter((sheet) => sheet.type === type)
+        .flatMap((sheet) => sheet.rows.map((row) => ({
+          row,
+          source: `${sheet.fileName} / ${sheet.sheetName}`,
+          id: getId(row),
+          title: getValue(row, aliases.title),
+          status: getValue(row, aliases.status)
+        })))
+        .filter((item) => item.id);
+    }
+
+    function uniqueById(items) {
+      const map = new Map();
+      items.forEach((item) => {
+        if (!map.has(item.id)) map.set(item.id, item);
+      });
+      return Array.from(map.values()).sort((a, b) => String(a.id).localeCompare(String(b.id), "zh-CN", { numeric: true }));
+    }
+
+    function toExportRows(items) {
+      return uniqueById(items).map((item) => ({
+        商品ID: item.id
+      }));
+    }
+
+    async function analyzeDaily() {
+      await analyze("daily");
+    }
+
+    async function analyzePromo() {
+      await analyze("promo");
+    }
+
+    async function analyze(mode) {
+      statusText.textContent = "正在读取表格...";
+      modeText.textContent = mode === "daily" ? "日常筛选" : "大促筛选";
+      currentResult = null;
+      activeSheetName = "";
+      setProgress(0, "准备读取文件");
+      renderLogs(["正在读取文件。"]);
+      renderEmpty("正在分析，请稍候。");
+
+      try {
+        const sheets = await loadSheets();
+        const businessAll = rowsFrom(sheets, "business");
+        const businessOnline = uniqueById(businessAll.filter((item) => isOnline(item.status)));
+        const subsidyItems = uniqueById(rowsFrom(sheets, "subsidy").filter((item) => isSubsidyStatus(item.status)));
+        const subsidyIds = new Set(subsidyItems.map((item) => item.id));
+        const promoItems = uniqueById(rowsFrom(sheets, "promo").filter((item) => isPromoStatus(item.status)));
+        const promoIds = new Set(promoItems.map((item) => item.id));
+
+        const logs = [
+          `识别到生意参谋表 ${sheets.filter((sheet) => sheet.type === "business").length} 个，焕新补贴表 ${sheets.filter((sheet) => sheet.type === "subsidy").length} 个，大促活动导出表 ${sheets.filter((sheet) => sheet.type === "promo").length} 个。`,
+          `生意参谋当前在线商品 ${businessOnline.length} 个，国补商品 ${subsidyItems.length} 个，大促商品 ${promoItems.length} 个。`
+        ];
+
+        if (mode === "daily") {
+          const dailySubsidy = businessOnline.filter((item) => subsidyIds.has(item.id));
+          const dailyNonSubsidy = businessOnline.filter((item) => !subsidyIds.has(item.id));
+          currentResult = {
+            mode,
+            fileName: "日常投图.xlsx",
+            sheets: {
+              日常国补: toExportRows(dailySubsidy),
+              日常非国补: toExportRows(dailyNonSubsidy)
+            },
+            counts: { business: businessOnline.length, subsidy: subsidyItems.length, promo: 0 }
+          };
+          logs.push(`日常国补 ${dailySubsidy.length} 个，日常非国补 ${dailyNonSubsidy.length} 个。`);
+        } else {
+          const promoSubsidy = promoItems.filter((item) => subsidyIds.has(item.id));
+          const promoNonSubsidy = promoItems.filter((item) => !subsidyIds.has(item.id));
+          const nonPromoBusiness = businessOnline.filter((item) => !promoIds.has(item.id));
+          const nonPromoSubsidy = nonPromoBusiness.filter((item) => subsidyIds.has(item.id));
+          const nonPromoNonSubsidy = nonPromoBusiness.filter((item) => !subsidyIds.has(item.id));
+          currentResult = {
+            mode,
+            fileName: "大促投图.xlsx",
+            sheets: {
+              大促国补: toExportRows(promoSubsidy),
+              大促非国补: toExportRows(promoNonSubsidy),
+              非大促国补: toExportRows(nonPromoSubsidy),
+              非大促非国补: toExportRows(nonPromoNonSubsidy)
+            },
+            counts: { business: businessOnline.length, subsidy: subsidyItems.length, promo: promoItems.length }
+          };
+          logs.push(`大促国补 ${promoSubsidy.length} 个，大促非国补 ${promoNonSubsidy.length} 个。`);
+          logs.push(`非大促国补 ${nonPromoSubsidy.length} 个，非大促非国补 ${nonPromoNonSubsidy.length} 个。`);
+        }
+
+        activeSheetName = Object.keys(currentResult.sheets)[0];
+        renderStats(currentResult);
+        renderTabs();
+        renderTable();
+        renderLogs(logs);
+        statusText.textContent = "分析完成";
+        setProgress(100, "分析完成，可导出结果");
+      } catch (error) {
+        statusText.textContent = "分析失败";
+        setProgress(0, "分析失败，请检查文件");
+        renderLogs([`分析失败：${error.message}`]);
+        renderEmpty(error.message);
+      }
+    }
+
+    function renderStats(result) {
+      businessCount.textContent = result?.counts.business ?? 0;
+      subsidyCount.textContent = result?.counts.subsidy ?? 0;
+      promoCount.textContent = result?.counts.promo ?? 0;
+      exportCount.textContent = result ? Object.values(result.sheets).reduce((sum, rows) => sum + rows.length, 0) : 0;
+    }
+
+    function renderTabs() {
+      if (!currentResult) {
+        tabs.innerHTML = "";
+        return;
+      }
+      tabs.innerHTML = Object.entries(currentResult.sheets).map(([name, rows]) => `
+        <button class="tab ${name === activeSheetName ? "active" : ""}" type="button" data-sheet="${escapeHtml(name)}">${escapeHtml(name)}（${rows.length}）</button>
+      `).join("");
+    }
+
+    function renderTable() {
+      if (!currentResult || !activeSheetName) {
+        renderEmpty("上传表格后，点击左侧日常筛选或大促筛选。");
+        return;
+      }
+
+      const rows = currentResult.sheets[activeSheetName] || [];
+      tableTitle.textContent = activeSheetName;
+      visibleText.textContent = `${rows.length} 条`;
+      if (!rows.length) {
+        renderEmpty("当前工作表没有商品 ID。");
+        return;
+      }
+
+      tableWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>商品 ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.商品ID)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderEmpty(text) {
+      visibleText.textContent = "0 条";
+      tableWrap.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
+    }
+
+    function renderLogs(logs) {
+      logList.innerHTML = logs.map((log) => `<div class="log-item">${escapeHtml(log)}</div>`).join("");
+    }
+
+    function exportExcel() {
+      if (!currentResult) {
+        statusText.textContent = "请先完成筛选";
+        return;
+      }
+
+      const workbook = XLSX.utils.book_new();
+      Object.entries(currentResult.sheets).forEach(([sheetName, rows]) => {
+        const sheet = rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([["商品ID"]]);
+        sheet["!cols"] = [{ wch: 18 }];
+        sheet["!autofilter"] = { ref: sheet["!ref"] };
+        XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+      });
+      XLSX.writeFile(workbook, currentResult.fileName);
+    }
+
+    function updateFileNameText() {
+      if (!selectedFiles.length) {
+        fileNameText.textContent = "未选择文件";
+        fileList.innerHTML = "";
+        setProgress(0, "等待添加文件");
+        return;
+      }
+
+      fileNameText.textContent = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} 个文件`;
+      fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-chip">
+          <span title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <button class="remove-file" type="button" data-index="${index}" aria-label="移除文件">×</button>
+        </div>
+      `).join("");
+      setProgress(0, `已添加 ${selectedFiles.length} 个文件，等待筛选`);
+    }
+
+    function addFiles(files) {
+      const existed = new Set(selectedFiles.map(fileKey));
+      files.forEach((file) => {
+        if (!existed.has(fileKey(file))) {
+          selectedFiles.push(file);
+          existed.add(fileKey(file));
+        }
+      });
+      fileInput.value = "";
+      updateFileNameText();
+    }
+
+    function fileKey(file) {
+      return `${file.name}-${file.size}-${file.lastModified}`;
+    }
+
+    function setProgress(percent, text) {
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = text;
+    }
+
+    if (!window.XLSX) {
+      statusText.textContent = "表格解析组件加载失败";
+      tableWrap.innerHTML = '<div class="loading-error">当前浏览器没有成功加载 Excel 解析组件。请确认能联网后刷新页面。</div>';
+    }
+
+    fileInput.addEventListener("change", () => addFiles(Array.from(fileInput.files || [])));
+    fileList.addEventListener("click", (event) => {
+      const button = event.target.closest(".remove-file");
+      if (!button) return;
+      selectedFiles.splice(Number(button.dataset.index), 1);
+      updateFileNameText();
+    });
+    dailyButton.addEventListener("click", analyzeDaily);
+    promoButton.addEventListener("click", analyzePromo);
+    exportButton.addEventListener("click", exportExcel);
+    tabs.addEventListener("click", (event) => {
+      const button = event.target.closest(".tab");
+      if (!button) return;
+      activeSheetName = button.dataset.sheet;
+      renderTabs();
+      renderTable();
+    });
+  </script>
+</body>
+</html>
