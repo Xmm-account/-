@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>链接渗透率更新工具</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
   <style>
     :root {
@@ -554,10 +555,11 @@
     }
 
     async function readSourceFile(file) {
-      const workbook = await XlsxPopulate.fromDataAsync(await file.arrayBuffer());
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", raw: false, cellDates: true });
       const items = [];
-      workbook.sheets().forEach((sheet) => {
-        const values = usedValues(sheet);
+      workbook.SheetNames.forEach((sheetName) => {
+        const sheet = workbook.Sheets[sheetName];
+        const values = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
         if (!values.length) return;
         const headerIndex = findHeaderIndex(values);
         const headers = values[headerIndex].map((cell, index) => String(cell || `空列${index + 1}`).trim());
@@ -572,8 +574,8 @@
           });
         items.push({
           fileName: file.name,
-          sheetName: sheet.name(),
-          type: classifySource(file.name, sheet.name()),
+          sheetName,
+          type: classifySource(file.name, sheetName),
           rows
         });
       });
@@ -739,7 +741,7 @@
         statusText.textContent = "请先选择数据源表格";
         return;
       }
-      if (!window.XlsxPopulate) {
+      if (!window.XlsxPopulate || !window.XLSX) {
         statusText.textContent = "解析组件加载失败";
         renderLogs([{ text: "当前浏览器没有成功加载 Excel 更新组件，请确认能访问 cdn.jsdelivr.net 后刷新页面。", level: "bad" }]);
         return;
@@ -836,7 +838,7 @@
 
     updateButton.addEventListener("click", updateWorkbook);
 
-    if (window.XlsxPopulate) {
+    if (window.XlsxPopulate && window.XLSX) {
       libraryText.textContent = "解析组件已加载";
     } else {
       libraryText.textContent = "解析组件未加载";
