@@ -638,8 +638,8 @@
     function classifySheet(fileName, sheetName) {
       const name = `${fileName} ${sheetName}`;
       if (name.includes("生意参谋")) return "business";
+      if (name.includes("焕新补贴") || name.includes("换新补贴") || name.includes("国补") || name.includes("百亿补贴")) return "subsidy";
       if (name.includes("活动商品导出")) return "promo";
-      if (name.includes("焕新补贴") || name.includes("国补") || name.includes("百亿补贴")) return "subsidy";
       return "";
     }
 
