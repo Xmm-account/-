@@ -1,0 +1,1237 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>统一报名表更新</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #66758d;
+      --line: #dbe4ef;
+      --soft: #eef4fb;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #0f8c6b;
+      --red: #cf3f4f;
+      --shadow: 0 18px 48px rgba(26, 39, 68, 0.12);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 34%),
+        linear-gradient(315deg, rgba(15, 140, 107, 0.08), transparent 30%),
+        var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1220px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: calc(100vh - 56px);
+      overflow: hidden;
+      border: 1px solid rgba(219, 228, 239, 0.95);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      color: #f8fafc;
+      background: #111827;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      color: #0f172a;
+      background: linear-gradient(135deg, #60a5fa, #34d399);
+      font-weight: 900;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      color: #afbbce;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .upload {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+    }
+
+    .file-label {
+      display: grid;
+      place-items: center;
+      min-height: 42px;
+      padding: 0 12px;
+      border-radius: 8px;
+      color: #0f172a;
+      background: #ffffff;
+      font-weight: 800;
+    }
+
+    .file-name {
+      min-width: 0;
+      overflow: hidden;
+      color: #dce5f2;
+      font-size: 14px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 7px;
+      max-height: 150px;
+      overflow: auto;
+      padding: 2px;
+    }
+
+    .file-chip {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 28px;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 4px 0 10px;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      font-size: 13px;
+    }
+
+    .file-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .remove-file {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 8px;
+      color: #dce5f2;
+      background: transparent;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .remove-file:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .primary,
+    .ghost {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 800;
+    }
+
+    .primary {
+      color: #ffffff;
+      background: var(--blue);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.24);
+    }
+
+    .primary:hover {
+      background: var(--blue-dark);
+    }
+
+    .ghost {
+      color: #dce5f2;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .ghost:hover {
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .rule-box {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .rule {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #dce5f2;
+      font-size: 13px;
+    }
+
+    .rule span:last-child {
+      color: #9fb0c8;
+      text-align: right;
+    }
+
+    .main {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      background: rgba(248, 250, 252, 0.78);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h2 {
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 18px 22px;
+    }
+
+    .card {
+      min-height: 92px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 8px 24px rgba(26, 39, 68, 0.05);
+    }
+
+    .card strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .card span {
+      display: block;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .workspace {
+      display: grid;
+      gap: 14px;
+      min-height: 0;
+      padding: 0 22px 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .table-wrap {
+      max-height: calc(100vh - 322px);
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: #3c4b63;
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      color: #047857;
+      background: #dcfce7;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      color: var(--muted);
+      text-align: center;
+      padding: 26px;
+    }
+
+    .logs {
+      display: grid;
+      gap: 8px;
+      max-height: 190px;
+      overflow: auto;
+      padding: 12px 14px;
+      color: #46576f;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .log-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .loading-error {
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #9f1239;
+      background: #ffe4eb;
+      border: 1px solid #fecdd3;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: min(100% - 20px, 760px);
+        padding: 10px 0;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side,
+      .topbar {
+        padding: 18px;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 16px;
+      }
+
+      .workspace {
+        padding: 0 16px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="layout">
+      <aside class="side">
+        <div class="brand">
+          <div class="brand-mark">R</div>
+          <div>
+            <h1>统一报名表更新</h1>
+            <p class="hint">按 ID 匹配活动表与链接数据</p>
+          </div>
+        </div>
+
+        <section class="upload">
+          <div class="file-row">
+            <label class="file-label" for="fileInput">添加文件</label>
+            <span class="file-name" id="fileNameText">未选择文件</span>
+          </div>
+          <input class="file-input" id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple>
+          <div class="file-list" id="fileList" aria-label="已添加文件"></div>
+          <button class="primary" id="processButton" type="button">更新报名表</button>
+          <button class="ghost" id="exportButton" type="button">导出更新后 Excel</button>
+        </section>
+
+        <section class="rule-box" aria-label="处理规则">
+          <div class="rule"><strong>统一报名表</strong><span>更新聚划算、国补、首单礼金工作表</span></div>
+          <div class="rule"><strong>聚划算表</strong><span>ID 写入聚划算</span></div>
+          <div class="rule"><strong>焕新补贴表</strong><span>ID 写入国补</span></div>
+          <div class="rule"><strong>null 表</strong><span>投放生效中写入首单礼金、加速费用</span></div>
+          <div class="rule"><strong>链接数据</strong><span>匹配类目、负责人</span></div>
+          <div class="rule"><strong>淘金币</strong><span>报名时间显示为 m月d日</span></div>
+          <div class="rule"><strong>报名时间</strong><span>填充今天日期</span></div>
+          <div class="rule"><strong>报名状态</strong><span>聚划算/国补活动中，首单礼金投放生效中</span></div>
+        </section>
+
+        <p class="hint">文件名或工作表名含“统一报名表”“链接数据”“聚划算”“焕新补贴”即可自动识别。</p>
+      </aside>
+
+      <section class="main">
+        <header class="topbar">
+          <div>
+            <h2>更新预览</h2>
+            <p class="status" id="statusText">请先添加表格文件</p>
+          </div>
+        </header>
+
+        <section class="cards" aria-label="统计">
+          <div class="card"><strong id="jhsCount">0</strong><span>聚划算 ID</span></div>
+          <div class="card"><strong id="subsidyCount">0</strong><span>国补 ID</span></div>
+          <div class="card"><strong id="linkCount">0</strong><span>链接数据 ID</span></div>
+          <div class="card"><strong id="updateCount">0</strong><span>新增行数</span></div>
+        </section>
+
+        <section class="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <strong>写入明细</strong>
+              <span class="status" id="previewCount">0 条</span>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+              <div class="empty">更新报名表后，这里会显示写入明细</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <strong>识别记录</strong>
+              <span class="status">文件与字段匹配</span>
+            </div>
+            <div class="logs" id="logList">
+              <div class="log-item">等待上传文件。</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const fileInput = document.querySelector("#fileInput");
+    const fileNameText = document.querySelector("#fileNameText");
+    const fileList = document.querySelector("#fileList");
+    const processButton = document.querySelector("#processButton");
+    const exportButton = document.querySelector("#exportButton");
+    const statusText = document.querySelector("#statusText");
+    const tableWrap = document.querySelector("#tableWrap");
+    const logList = document.querySelector("#logList");
+    const previewCount = document.querySelector("#previewCount");
+    const jhsCount = document.querySelector("#jhsCount");
+    const subsidyCount = document.querySelector("#subsidyCount");
+    const linkCount = document.querySelector("#linkCount");
+    const updateCount = document.querySelector("#updateCount");
+
+    const aliases = {
+      id: ["id", "商品id", "商品 ID", "商品ID", "活动商品ID", "宝贝id", "itemid", "item_id", "auctionid"],
+      title: ["标题", "商品标题", "商品名称", "宝贝标题", "宝贝名称", "活动商品名称", "商品信息"],
+      category: ["类目", "类目名称", "商品类目", "一级类目", "主营类目"],
+      owner: ["负责人", "运营负责人", "运营", "对接人"],
+      signupTime: ["报名时间", "提报时间", "活动报名时间"],
+      signupStatus: ["报名状态", "状态", "活动状态"],
+      deliveryStatus: ["投放状态", "投放状态名称", "投放生效状态", "投放"],
+      accelerationFee: ["加速费用", "加速费", "加速金额", "费用"]
+    };
+
+    let selectedFiles = [];
+    let updatedWorkbook = null;
+    let originalWorkbookName = "";
+    let previewRows = [];
+
+    function normalize(value) {
+      return String(value ?? "")
+        .replace(/\s+/g, "")
+        .replace(/[()（）_\-]/g, "")
+        .toLowerCase();
+    }
+
+    function classify(fileName, sheetName) {
+      const name = `${fileName} ${sheetName}`;
+      if (name.toLowerCase().includes("null")) return "firstOrder";
+      if (name.includes("统一报名表")) return "signup";
+      if (name.includes("链接数据")) return "link";
+      if (name.includes("聚划算")) return "jhs";
+      if (name.includes("焕新补贴") || name.includes("国补")) return "subsidy";
+      return "";
+    }
+
+    function cleanId(value) {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      if (/^\d+(\.0+)?$/.test(text)) return text.replace(/\.0+$/, "");
+      return text;
+    }
+
+    function findKey(row, names) {
+      const keys = Object.keys(row);
+      const normalizedNames = names.map(normalize);
+      return keys.find((key) => normalizedNames.includes(normalize(key)))
+        || keys.find((key) => normalizedNames.some((name) => normalize(key).includes(name)));
+    }
+
+    function getValue(row, names) {
+      const key = findKey(row, names);
+      return key ? row[key] : "";
+    }
+
+    function getId(row) {
+      const direct = cleanId(getValue(row, aliases.id));
+      if (direct) return direct;
+      return Object.values(row).map(cleanId).find((value) => /^\d{8,}$/.test(value)) || "";
+    }
+
+    function todayText() {
+      const date = new Date();
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function todayExcelDate() {
+      const date = new Date();
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function parseDateValue(value) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+      const text = String(value ?? "").trim();
+      if (!text) return null;
+
+      let match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$/);
+      if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+
+      match = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$/);
+      if (match) {
+        const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3]);
+        return new Date(year, Number(match[1]) - 1, Number(match[2]));
+      }
+
+      match = text.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$/);
+      if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+
+      match = text.match(/^(\d{1,2})月(\d{1,2})日$/);
+      if (match) {
+        const year = new Date().getFullYear();
+        return new Date(year, Number(match[1]) - 1, Number(match[2]));
+      }
+
+      return null;
+    }
+
+    function formatDateText(value, format = "monthDay") {
+      const date = parseDateValue(value);
+      if (!date) return String(value ?? "");
+      if (format === "yearMonth") return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function isActiveDelivery(row) {
+      return String(getValue(row, aliases.deliveryStatus) || getValue(row, aliases.signupStatus))
+        .includes("投放生效中");
+    }
+
+    async function readWorkbook(file) {
+      const data = await file.arrayBuffer();
+      return XLSX.read(data, { type: "array", raw: false, cellStyles: true });
+    }
+
+    function sheetToRows(sheet) {
+      const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      if (!matrix.length) return [];
+      const headerIndex = findHeaderIndex(matrix);
+      const headers = matrix[headerIndex].map((cell, index) => String(cell || "").trim() || `空列${index + 1}`);
+      return matrix.slice(headerIndex + 1)
+        .filter((line) => line.some((cell) => String(cell ?? "").trim() !== ""))
+        .map((line) => {
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = line[index] ?? "";
+          });
+          return row;
+        });
+    }
+
+    function findHeaderIndex(matrix) {
+      let bestIndex = 0;
+      let bestScore = -1;
+      const groups = [aliases.id, aliases.title, aliases.category, aliases.owner, aliases.signupTime, aliases.signupStatus, aliases.deliveryStatus, aliases.accelerationFee];
+      matrix.slice(0, 30).forEach((line, index) => {
+        const cells = line.map(normalize).filter(Boolean);
+        const score = groups.reduce((sum, group) => {
+          const names = group.map(normalize);
+          return sum + (cells.some((cell) => names.some((name) => cell.includes(name) || name.includes(cell))) ? 1 : 0);
+        }, 0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      });
+      return bestIndex;
+    }
+
+    function collectIds(sheets) {
+      const ids = [];
+      const seen = new Set();
+      sheets.forEach((sheetInfo) => {
+        sheetToRows(sheetInfo.sheet).forEach((row) => {
+          const id = getId(row);
+          if (id && !seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+        });
+      });
+      return ids;
+    }
+
+    function collectItems(sheets, rowFilter = () => true) {
+      const ids = [];
+      const itemMap = new Map();
+      const seen = new Set();
+      sheets.forEach((sheetInfo) => {
+        sheetToRows(sheetInfo.sheet).forEach((row) => {
+          if (!rowFilter(row)) return;
+          const id = getId(row);
+          if (!id) return;
+          if (!seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+          if (!itemMap.has(id)) {
+            itemMap.set(id, {
+              title: getValue(row, aliases.title),
+              category: getValue(row, aliases.category),
+              owner: getValue(row, aliases.owner),
+              signupTime: getValue(row, aliases.signupTime),
+              accelerationFee: getValue(row, aliases.accelerationFee)
+            });
+          }
+        });
+      });
+      return { ids, itemMap };
+    }
+
+    function buildLinkMap(sheets) {
+      const map = new Map();
+      sheets.forEach((sheetInfo) => {
+        sheetToRows(sheetInfo.sheet).forEach((row) => {
+          const id = getId(row);
+          if (!id) return;
+          const current = map.get(id) || {};
+          map.set(id, {
+            title: current.title || getValue(row, aliases.title),
+            category: current.category || getValue(row, aliases.category),
+            owner: current.owner || getValue(row, aliases.owner)
+          });
+        });
+      });
+      return map;
+    }
+
+    function findSheetName(workbook, target) {
+      const exact = workbook.SheetNames.find((name) => normalize(name) === normalize(target));
+      if (exact) return exact;
+      return workbook.SheetNames.find((name) => name.includes(target));
+    }
+
+    function ensureSheet(workbook, name) {
+      const found = findSheetName(workbook, name);
+      if (found) return found;
+      const sheet = XLSX.utils.aoa_to_sheet([["ID", "类目", "负责人", "报名时间", "报名状态"]]);
+      workbook.Sheets[name] = sheet;
+      workbook.SheetNames.push(name);
+      return name;
+    }
+
+    function getSheetMatrix(sheet) {
+      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+    }
+
+    function setCellValue(cell, value) {
+      delete cell.w;
+      delete cell.h;
+      delete cell.r;
+      cell.v = value ?? "";
+      cell.t = "s";
+    }
+
+    function getDateCellFormat(format = "monthDay") {
+      return format === "yearMonth" ? 'yyyy"年"m"月"' : 'm"月"d"日"';
+    }
+
+    function setDateCellValue(cell, value, format = "monthDay") {
+      delete cell.w;
+      delete cell.h;
+      delete cell.r;
+      cell.v = parseDateValue(value) || value;
+      cell.t = "d";
+      cell.z = getDateCellFormat(format);
+    }
+
+    function formatDateCell(cell, value, format = "monthDay") {
+      const date = parseDateValue(value);
+      if (date) {
+        setDateCellValue(cell, date, format);
+        return;
+      }
+      delete cell.w;
+      cell.z = getDateCellFormat(format);
+    }
+
+    function formatExistingSignupTimeSheet(workbook, sheetName) {
+      const actualName = findSheetName(workbook, sheetName);
+      if (!actualName) return { found: false, formatted: 0 };
+
+      const sheet = workbook.Sheets[actualName];
+      const matrix = getSheetMatrix(sheet);
+      if (!matrix.length) return { found: true, formatted: 0 };
+
+      const headerIndex = findHeaderIndex(matrix);
+      const header = matrix[headerIndex] || [];
+      const normalizedNames = aliases.signupTime.map(normalize);
+      let signupTimeIndex = header.findIndex((cell) => normalizedNames.includes(normalize(cell)));
+      if (signupTimeIndex < 0) {
+        signupTimeIndex = header.findIndex((cell) => normalizedNames.some((name) => normalize(cell).includes(name)));
+      }
+      if (signupTimeIndex < 0) return { found: true, formatted: 0 };
+
+      let formatted = 0;
+      for (let rowIndex = headerIndex + 1; rowIndex < matrix.length; rowIndex += 1) {
+        const value = matrix[rowIndex]?.[signupTimeIndex];
+        const date = parseDateValue(value);
+        if (!date) continue;
+
+        const address = XLSX.utils.encode_cell({ r: rowIndex, c: signupTimeIndex });
+        const cell = sheet[address] ? { ...sheet[address] } : {};
+        setDateCellValue(cell, date, "monthDay");
+        sheet[address] = cell;
+        formatted += 1;
+      }
+      return { found: true, formatted };
+    }
+
+    function buildSheetFromRows(originalSheet, rows, indexes, options = {}) {
+      const signupTimeFormat = options.signupTimeFormat || "monthDay";
+      const fallbackRange = {
+        s: { r: 0, c: 0 },
+        e: { r: Math.max(0, rows.length - 1), c: Math.max(...Object.values(indexes)) }
+      };
+      const originalRange = originalSheet["!ref"] ? XLSX.utils.decode_range(originalSheet["!ref"]) : fallbackRange;
+      const columnCount = Math.max(
+        originalRange.e.c + 1,
+        Math.max(...Object.values(indexes)) + 1,
+        ...rows.map((item) => item.row.length)
+      );
+      const nextSheet = {};
+
+      rows.forEach((item, rowIndex) => {
+        for (let colIndex = 0; colIndex < columnCount; colIndex += 1) {
+          const nextAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+          const sourceAddress = XLSX.utils.encode_cell({ r: item.sourceIndex, c: colIndex });
+          const sourceCell = originalSheet[sourceAddress];
+          const value = item.row[colIndex] ?? "";
+
+          if (!item.isNew) {
+            if (sourceCell) {
+              const cell = { ...sourceCell };
+              if (item.updatedColumns?.has(colIndex)) {
+                if (colIndex === indexes.signupTime) formatDateCell(cell, value, signupTimeFormat);
+                else setCellValue(cell, value);
+              } else if (colIndex === indexes.signupTime) {
+                formatDateCell(cell, value, signupTimeFormat);
+              }
+              nextSheet[nextAddress] = cell;
+            }
+            else if (String(value).trim() !== "") {
+              const cell = {};
+              if (colIndex === indexes.signupTime) formatDateCell(cell, value, signupTimeFormat);
+              else setCellValue(cell, value);
+              nextSheet[nextAddress] = cell;
+            }
+            continue;
+          }
+
+          if (!sourceCell && String(value).trim() === "") continue;
+          const cell = sourceCell ? { ...sourceCell } : {};
+          if (colIndex === indexes.signupTime && value instanceof Date) {
+            setDateCellValue(cell, value, signupTimeFormat);
+          } else {
+            setCellValue(cell, value);
+          }
+          nextSheet[nextAddress] = cell;
+        }
+      });
+
+      nextSheet["!ref"] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: Math.max(0, rows.length - 1), c: Math.max(0, columnCount - 1) }
+      });
+      if (originalSheet["!cols"]) nextSheet["!cols"] = originalSheet["!cols"];
+      if (originalSheet["!rows"]) {
+        nextSheet["!rows"] = rows.map((item) => {
+          const rowInfo = originalSheet["!rows"][item.sourceIndex];
+          return rowInfo ? { ...rowInfo } : undefined;
+        });
+      }
+      return nextSheet;
+    }
+
+    function getOrCreateHeader(matrix, options = {}) {
+      if (!matrix.length) matrix.push(["ID", "类目", "负责人", "报名时间", "报名状态"]);
+      const headerIndex = findHeaderIndex(matrix);
+      const header = matrix[headerIndex];
+      const needed = [
+        { key: "id", label: "ID", names: aliases.id },
+        { key: "title", label: "商品标题", names: aliases.title },
+        { key: "category", label: "类目", names: aliases.category },
+        { key: "owner", label: "负责人", names: aliases.owner },
+        { key: "signupTime", label: "报名时间", names: aliases.signupTime },
+        { key: "signupStatus", label: "报名状态", names: aliases.signupStatus }
+      ];
+      if (options.includeAccelerationFee) {
+        needed.push({ key: "accelerationFee", label: "加速费用", names: aliases.accelerationFee });
+      }
+      const indexes = {};
+
+      needed.forEach((item) => {
+        let index = header.findIndex((cell) => item.names.map(normalize).includes(normalize(cell)));
+        if (index < 0) {
+          index = header.length;
+          header.push(item.label);
+        }
+        indexes[item.key] = index;
+      });
+
+      return { headerIndex, indexes };
+    }
+
+    function updateTargetSheet(workbook, sheetName, ids, itemMap, linkMap, type, options = {}) {
+      const actualName = ensureSheet(workbook, sheetName);
+      const originalSheet = workbook.Sheets[actualName];
+      const matrix = getSheetMatrix(workbook.Sheets[actualName]);
+      const { headerIndex, indexes } = getOrCreateHeader(matrix, options);
+      const idToRowIndex = new Map();
+      const currentIds = new Set(ids);
+      const templateRowIndex = Math.max(headerIndex, matrix.length - 1);
+
+      for (let rowIndex = headerIndex + 1; rowIndex < matrix.length; rowIndex += 1) {
+        const id = cleanId(matrix[rowIndex][indexes.id]);
+        if (id) idToRowIndex.set(id, rowIndex);
+      }
+
+      let removed = 0;
+      const nextRows = matrix.slice(0, headerIndex + 1).map((row, sourceIndex) => ({ row, sourceIndex }));
+      matrix.slice(headerIndex + 1).forEach((row, offset) => {
+          const sourceIndex = headerIndex + 1 + offset;
+          const id = cleanId(row[indexes.id]);
+          if (!id) {
+            if (row.some((cell) => String(cell ?? "").trim() !== "")) nextRows.push({ row, sourceIndex });
+            return;
+          }
+          if (currentIds.has(id)) {
+            const updatedColumns = new Set();
+            if (options.updateExistingFields) {
+              const item = itemMap.get(id) || {};
+              const link = linkMap.get(id) || {};
+              if (!row[indexes.title] && (item.title || link.title)) {
+                row[indexes.title] = item.title || link.title || "";
+                updatedColumns.add(indexes.title);
+              }
+              if (!row[indexes.category] && (link.category || item.category)) {
+                row[indexes.category] = link.category || item.category || "";
+                updatedColumns.add(indexes.category);
+              }
+              if (!row[indexes.owner] && (link.owner || item.owner)) {
+                row[indexes.owner] = link.owner || item.owner || "";
+                updatedColumns.add(indexes.owner);
+              }
+              if (item.signupTime) {
+                row[indexes.signupTime] = parseDateValue(item.signupTime) || item.signupTime;
+                updatedColumns.add(indexes.signupTime);
+              }
+              if (options.statusValue) {
+                row[indexes.signupStatus] = options.statusValue;
+                updatedColumns.add(indexes.signupStatus);
+              }
+              if (indexes.accelerationFee !== undefined) {
+                row[indexes.accelerationFee] = item.accelerationFee || "";
+                updatedColumns.add(indexes.accelerationFee);
+              }
+            }
+            nextRows.push({ row, sourceIndex, updatedColumns });
+            return;
+          }
+          removed += 1;
+          previewRows.push({
+            type,
+            action: "删除过期",
+            id,
+            title: row[indexes.title] || "",
+            category: row[indexes.category] || "",
+            owner: row[indexes.owner] || "",
+            time: formatDateText(row[indexes.signupTime], options.signupTimeFormat),
+            status: row[indexes.signupStatus] || ""
+          });
+        });
+
+      let added = 0;
+      ids.forEach((id) => {
+        if (idToRowIndex.has(id)) return;
+        const row = [];
+        const item = itemMap.get(id) || {};
+        const link = linkMap.get(id) || {};
+        row[indexes.id] = id;
+        row[indexes.title] = item.title || link.title || "";
+        row[indexes.category] = link.category || item.category || "";
+        row[indexes.owner] = link.owner || item.owner || "";
+        row[indexes.signupTime] = options.useSourceSignupTime
+          ? (parseDateValue(item.signupTime) || item.signupTime || "")
+          : todayExcelDate();
+        row[indexes.signupStatus] = options.statusValue || "活动中";
+        if (indexes.accelerationFee !== undefined) row[indexes.accelerationFee] = item.accelerationFee || "";
+        nextRows.push({ row, sourceIndex: templateRowIndex, isNew: true });
+        added += 1;
+        previewRows.push({
+          type,
+          action: "新增",
+          id,
+          title: item.title || link.title || "",
+          category: link.category || item.category || "",
+          owner: link.owner || item.owner || "",
+          time: options.useSourceSignupTime ? formatDateText(item.signupTime, options.signupTimeFormat) : todayText(),
+          status: options.statusValue || "活动中"
+        });
+      });
+
+      const nextSheet = buildSheetFromRows(originalSheet, nextRows, indexes, options);
+      workbook.Sheets[actualName] = nextSheet;
+      workbook.Sheets[actualName]["!autofilter"] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: headerIndex, c: 0 },
+          e: { r: Math.max(headerIndex, nextRows.length - 1), c: Math.max(...Object.values(indexes)) }
+        })
+      };
+      return { added, removed, kept: ids.length - added };
+    }
+
+    async function processFiles() {
+      if (!selectedFiles.length) {
+        statusText.textContent = "请先添加表格文件";
+        return;
+      }
+
+      if (!window.XLSX) {
+        statusText.textContent = "表格解析组件加载失败";
+        return;
+      }
+
+      statusText.textContent = "正在读取文件...";
+      previewRows = [];
+      updatedWorkbook = null;
+      renderLogs(["正在读取文件。"]);
+
+      try {
+        const workbooks = [];
+        for (const file of selectedFiles) {
+          const workbook = await readWorkbook(file);
+          workbook.__fileName = file.name;
+          workbooks.push(workbook);
+        }
+
+        const sheetInfos = [];
+        workbooks.forEach((workbook) => {
+          workbook.SheetNames.forEach((sheetName) => {
+            sheetInfos.push({
+              workbook,
+              fileName: workbook.__fileName,
+              sheetName,
+              sheet: workbook.Sheets[sheetName],
+              type: classify(workbook.__fileName, sheetName)
+            });
+          });
+        });
+
+        const signupWorkbook = workbooks.find((workbook) =>
+          workbook.__fileName.includes("统一报名表") || workbook.SheetNames.some((name) => name.includes("聚划算") || name.includes("国补") || name.includes("首单礼金") || name.includes("淘金币"))
+        );
+        if (!signupWorkbook) throw new Error("没有识别到统一报名表，请确认文件名含“统一报名表”，或表内含“聚划算/国补/首单礼金/淘金币”工作表。");
+
+        updatedWorkbook = signupWorkbook;
+        originalWorkbookName = signupWorkbook.__fileName.replace(/\.(xlsx|xls|csv)$/i, "");
+
+        const linkSheets = sheetInfos.filter((info) => info.type === "link");
+        const jhsSheets = sheetInfos.filter((info) => info.type === "jhs" && info.workbook !== signupWorkbook);
+        const subsidySheets = sheetInfos.filter((info) => info.type === "subsidy" && info.workbook !== signupWorkbook);
+        const firstOrderSheets = sheetInfos.filter((info) => info.type === "firstOrder" && !info.sheetName.includes("首单礼金"));
+        const referenceSheets = sheetInfos.filter((info) => info.type !== "firstOrder");
+        const linkMap = buildLinkMap(linkSheets);
+        const referenceMap = buildLinkMap(referenceSheets);
+        const jhsItems = collectItems(jhsSheets);
+        const subsidyItems = collectItems(subsidySheets);
+        const firstOrderItems = collectItems(firstOrderSheets, isActiveDelivery);
+        const jhsIds = jhsItems.ids;
+        const subsidyIds = subsidyItems.ids;
+        const firstOrderIds = firstOrderItems.ids;
+
+        const emptyResult = { added: 0, removed: 0, kept: 0 };
+        const jhsResult = jhsSheets.length ? updateTargetSheet(updatedWorkbook, "聚划算", jhsIds, jhsItems.itemMap, linkMap, "聚划算") : emptyResult;
+        const subsidyResult = subsidySheets.length ? updateTargetSheet(updatedWorkbook, "国补", subsidyIds, subsidyItems.itemMap, linkMap, "国补") : emptyResult;
+        const firstOrderResult = firstOrderSheets.length
+          ? updateTargetSheet(updatedWorkbook, "首单礼金", firstOrderIds, firstOrderItems.itemMap, referenceMap, "首单礼金", {
+              includeAccelerationFee: true,
+              updateExistingFields: true,
+              useSourceSignupTime: true,
+              signupTimeFormat: "monthDay",
+              statusValue: "投放生效中"
+            })
+          : emptyResult;
+        const taojinbiDateResult = formatExistingSignupTimeSheet(updatedWorkbook, "淘金币");
+
+        jhsCount.textContent = jhsIds.length;
+        subsidyCount.textContent = subsidyIds.length;
+        linkCount.textContent = linkMap.size;
+        updateCount.textContent = jhsResult.added + subsidyResult.added + firstOrderResult.added;
+
+        renderPreview();
+        renderLogs([
+          `识别到统一报名表：${signupWorkbook.__fileName}。`,
+          `识别到链接数据工作表 ${linkSheets.length} 个，可匹配 ${linkMap.size} 个 ID。`,
+          jhsSheets.length
+            ? `聚划算表读取到 ${jhsIds.length} 个 ID，新增 ${jhsResult.added} 行，删除过期 ${jhsResult.removed} 行，原有 ${jhsResult.kept} 行保持不变。`
+            : "未识别到聚划算来源表，已跳过“聚划算”工作表清理与新增。",
+          subsidySheets.length
+            ? `焕新补贴表读取到 ${subsidyIds.length} 个 ID，新增 ${subsidyResult.added} 行，删除过期 ${subsidyResult.removed} 行，原有 ${subsidyResult.kept} 行保持不变。`
+            : "未识别到焕新补贴来源表，已跳过“国补”工作表清理与新增。",
+          firstOrderSheets.length
+            ? `null 表筛选“投放生效中”后读取到 ${firstOrderIds.length} 个 ID，已写入“首单礼金”，新增 ${firstOrderResult.added} 行，删除过期 ${firstOrderResult.removed} 行，原有 ${firstOrderResult.kept} 行会补齐报名时间与加速费用；null 表缺失的标题会按 ID 从其他表格补齐。`
+            : "未识别到含 null 字样的来源表，已跳过“首单礼金”工作表清理与新增。",
+          taojinbiDateResult.found
+            ? `淘金币工作表已将 ${taojinbiDateResult.formatted} 条报名时间格式化为 m月d日。`
+            : "未识别到淘金币工作表，已跳过淘金币报名时间格式化。",
+          `聚划算、国补新增行的报名时间填充为 ${todayText()}；首单礼金报名时间使用 null 表里的报名时间并显示为 m月d日，报名状态填充为“投放生效中”。`
+        ]);
+        statusText.textContent = "更新完成，可以导出 Excel";
+      } catch (error) {
+        statusText.textContent = "更新失败";
+        renderLogs([`处理失败：${error.message}`]);
+      }
+    }
+
+    function renderPreview() {
+      previewCount.textContent = `${previewRows.length} 条`;
+      if (!previewRows.length) {
+        tableWrap.innerHTML = '<div class="empty">没有可写入的数据</div>';
+        return;
+      }
+
+      tableWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>工作表</th>
+              <th>操作</th>
+              <th>ID</th>
+              <th>标题</th>
+              <th>类目</th>
+              <th>负责人</th>
+              <th>报名时间</th>
+              <th>报名状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${previewRows.map((row) => `
+              <tr>
+                <td><span class="tag">${escapeHtml(row.type)}</span></td>
+                <td>${escapeHtml(row.action || "新增")}</td>
+                <td>${escapeHtml(row.id)}</td>
+                <td>${escapeHtml(row.title || "-")}</td>
+                <td>${escapeHtml(row.category || "-")}</td>
+                <td>${escapeHtml(row.owner || "-")}</td>
+                <td>${escapeHtml(row.time)}</td>
+                <td>${escapeHtml(row.status)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderLogs(logs) {
+      logList.innerHTML = logs.map((log) => `<div class="log-item">${escapeHtml(log)}</div>`).join("");
+    }
+
+    function exportWorkbook() {
+      if (!updatedWorkbook) {
+        statusText.textContent = "请先更新报名表";
+        return;
+      }
+
+      XLSX.writeFile(updatedWorkbook, `${originalWorkbookName || "统一报名表"}-已更新-${todayText()}.xlsx`);
+    }
+
+    function updateFileNameText() {
+      if (!selectedFiles.length) {
+        fileNameText.textContent = "未选择文件";
+        fileList.innerHTML = "";
+        return;
+      }
+
+      fileNameText.textContent = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} 个文件`;
+      fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-chip">
+          <span title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <button class="remove-file" type="button" data-index="${index}" aria-label="移除文件">×</button>
+        </div>
+      `).join("");
+    }
+
+    function addFiles(files) {
+      const existed = new Set(selectedFiles.map(fileKey));
+      files.forEach((file) => {
+        if (!existed.has(fileKey(file))) {
+          selectedFiles.push(file);
+          existed.add(fileKey(file));
+        }
+      });
+      fileInput.value = "";
+      updateFileNameText();
+      statusText.textContent = `已添加 ${selectedFiles.length} 个文件`;
+    }
+
+    function fileKey(file) {
+      return `${file.name}-${file.size}-${file.lastModified}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    if (!window.XLSX) {
+      statusText.textContent = "表格解析组件加载失败";
+      tableWrap.innerHTML = '<div class="loading-error">当前浏览器没有成功加载 Excel 解析组件。请确认能联网后刷新页面。</div>';
+    }
+
+    fileInput.addEventListener("change", () => addFiles(Array.from(fileInput.files || [])));
+    fileList.addEventListener("click", (event) => {
+      const button = event.target.closest(".remove-file");
+      if (!button) return;
+      selectedFiles.splice(Number(button.dataset.index), 1);
+      updateFileNameText();
+    });
+    processButton.addEventListener("click", processFiles);
+    exportButton.addEventListener("click", exportWorkbook);
+  </script>
+</body>
+</html>
+
+
+
+
+
