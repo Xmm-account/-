@@ -508,7 +508,7 @@
 
         <section class="rules" aria-label="筛选规则">
           <div class="rule"><strong>日常筛选</strong><span>生意参谋当前在线商品，按焕新补贴待审核/活动中拆成国补和非国补。</span></div>
-          <div class="rule"><strong>大促筛选</strong><span>大促活动导出中的待审核/活动中/异常为大促商品，再按国补拆分四个工作表。</span></div>
+          <div class="rule"><strong>大促筛选</strong><span>大促活动导出中的草稿/已发布设定/异常为大促商品，再按国补拆分四个工作表。</span></div>
           <div class="rule"><strong>识别方式</strong><span>文件名或工作表名包含“生意参谋”“焕新补贴”“活动商品导出”。</span></div>
         </section>
 
@@ -632,7 +632,7 @@
     }
 
     function isPromoStatus(status) {
-      return /待审核|活动中|异常/.test(String(status ?? ""));
+      return /草稿|已发布设定|异常/.test(String(status ?? ""));
     }
 
     function classifySheet(fileName, sheetName) {
