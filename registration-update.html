@@ -528,7 +528,7 @@
     const aliases = {
       id: ["id", "商品id", "商品 ID", "商品ID", "活动商品ID", "宝贝id", "itemid", "item_id", "auctionid"],
       title: ["标题", "商品标题", "商品名称", "宝贝标题", "宝贝名称", "活动商品名称", "商品信息"],
-      category: ["类目", "类目名称", "商品类目", "一级类目", "主营类目"],
+      category: ["类目", "类目名称"],
       owner: ["负责人", "运营负责人", "运营", "对接人"],
       signupTime: ["报名时间", "提报时间", "活动报名时间"],
       signupStatus: ["报名状态", "状态", "活动状态"],
@@ -574,6 +574,11 @@
 
     function getValue(row, names) {
       const key = findKey(row, names);
+      return key ? row[key] : "";
+    }
+
+    function getCategoryName(row) {
+      const key = Object.keys(row).find((item) => normalize(item) === normalize("类目名称"));
       return key ? row[key] : "";
     }
 
@@ -701,7 +706,7 @@
           if (!itemMap.has(id)) {
             itemMap.set(id, {
               title: getValue(row, aliases.title),
-              category: getValue(row, aliases.category),
+              category: getCategoryName(row),
               owner: getValue(row, aliases.owner),
               signupTime: getValue(row, aliases.signupTime),
               accelerationFee: getValue(row, aliases.accelerationFee)
@@ -721,7 +726,7 @@
           const current = map.get(id) || {};
           map.set(id, {
             title: current.title || getValue(row, aliases.title),
-            category: current.category || getValue(row, aliases.category),
+            category: current.category || getCategoryName(row),
             owner: current.owner || getValue(row, aliases.owner)
           });
         });
