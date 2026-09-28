@@ -462,8 +462,8 @@
           <div class="rule"><strong>焕新补贴表</strong><span>ID 写入国补</span></div>
           <div class="rule"><strong>null 表</strong><span>投放生效中写入首单礼金、加速费用</span></div>
           <div class="rule"><strong>链接数据</strong><span>匹配类目、负责人</span></div>
-          <div class="rule"><strong>淘金币</strong><span>报名时间显示为 m月d日</span></div>
-          <div class="rule"><strong>报名时间</strong><span>全部统一显示为 m月d日</span></div>
+          <div class="rule"><strong>淘金币</strong><span>不改原有报名时间</span></div>
+          <div class="rule"><strong>报名时间</strong><span>只给新增行填充当前日期</span></div>
           <div class="rule"><strong>报名状态</strong><span>聚划算/国补活动中，首单礼金投放生效中</span></div>
         </section>
 
@@ -866,18 +866,12 @@
           if (!item.isNew) {
             if (sourceCell) {
               const cell = { ...sourceCell };
-              if (item.updatedColumns?.has(colIndex)) {
-                if (colIndex === indexes.signupTime) formatDateCell(cell, value, signupTimeFormat);
-                else setCellValue(cell, value);
-              } else if (colIndex === indexes.signupTime) {
-                formatDateCell(cell, value, signupTimeFormat);
-              }
+              if (item.updatedColumns?.has(colIndex)) setCellValue(cell, value);
               nextSheet[nextAddress] = cell;
             }
             else if (String(value).trim() !== "") {
               const cell = {};
-              if (colIndex === indexes.signupTime) formatDateCell(cell, value, signupTimeFormat);
-              else setCellValue(cell, value);
+              setCellValue(cell, value);
               nextSheet[nextAddress] = cell;
             }
             continue;
@@ -975,16 +969,6 @@
                 row[indexes.owner] = link.owner || item.owner || "";
                 updatedColumns.add(indexes.owner);
               }
-              if (options.updateExistingSignupTime && item.signupTime) {
-                row[indexes.signupTime] = parseDateValue(item.signupTime) || item.signupTime;
-                updatedColumns.add(indexes.signupTime);
-              }
-              if (!row[indexes.signupTime]) {
-                row[indexes.signupTime] = options.useSourceSignupTime
-                  ? signupTimeText(item.signupTime, options.signupTimeFormat)
-                  : todayText();
-                updatedColumns.add(indexes.signupTime);
-              }
               if (options.statusValue) {
                 row[indexes.signupStatus] = options.statusValue;
                 updatedColumns.add(indexes.signupStatus);
@@ -1020,9 +1004,7 @@
         row[indexes.title] = item.title || link.title || "";
         row[indexes.category] = link.category || item.category || "";
         row[indexes.owner] = link.owner || item.owner || "";
-        row[indexes.signupTime] = options.useSourceSignupTime
-          ? signupTimeText(item.signupTime, options.signupTimeFormat)
-          : todayText();
+        row[indexes.signupTime] = todayText();
         row[indexes.signupStatus] = options.statusValue || "活动中";
         if (indexes.accelerationFee !== undefined) row[indexes.accelerationFee] = item.accelerationFee || "";
         nextRows.push({ row, sourceIndex: templateRowIndex, isNew: true });
@@ -1034,7 +1016,7 @@
           title: item.title || link.title || "",
           category: link.category || item.category || "",
           owner: link.owner || item.owner || "",
-          time: options.useSourceSignupTime ? formatDateText(item.signupTime, options.signupTimeFormat) : todayText(),
+          time: todayText(),
           status: options.statusValue || "活动中"
         });
       });
@@ -1116,12 +1098,11 @@
           ? updateTargetSheet(updatedWorkbook, "首单礼金", firstOrderIds, firstOrderItems.itemMap, referenceMap, "首单礼金", {
               includeAccelerationFee: true,
               updateExistingFields: true,
-              useSourceSignupTime: true,
               signupTimeFormat: "monthDay",
               statusValue: "投放生效中"
             })
           : emptyResult;
-        const taojinbiDateResult = formatExistingSignupTimeSheet(updatedWorkbook, "淘金币");
+        const taojinbiDateResult = { found: Boolean(findSheetName(updatedWorkbook, "淘金币")), formatted: 0 };
 
         jhsCount.textContent = jhsIds.length;
         subsidyCount.textContent = subsidyIds.length;
@@ -1139,12 +1120,12 @@
             ? `焕新补贴表读取到 ${subsidyIds.length} 个 ID，新增 ${subsidyResult.added} 行，删除过期 ${subsidyResult.removed} 行，原有 ${subsidyResult.kept} 行保持不变。`
             : "未识别到焕新补贴来源表，已跳过“国补”工作表清理与新增。",
           firstOrderSheets.length
-            ? `null 表筛选“投放生效中”后读取到 ${firstOrderIds.length} 个 ID，已写入“首单礼金”，新增 ${firstOrderResult.added} 行，删除过期 ${firstOrderResult.removed} 行，原有 ${firstOrderResult.kept} 行的报名时间只统一显示格式、不改日期；null 表缺失的标题会按 ID 从其他表格补齐。`
+            ? `null 表筛选“投放生效中”后读取到 ${firstOrderIds.length} 个 ID，已写入“首单礼金”，新增 ${firstOrderResult.added} 行，删除过期 ${firstOrderResult.removed} 行，原有 ${firstOrderResult.kept} 行的报名时间保持不变；null 表缺失的标题会按 ID 从其他表格补齐。`
             : "未识别到含 null 字样的来源表，已跳过“首单礼金”工作表清理与新增。",
           taojinbiDateResult.found
-            ? `淘金币工作表已将 ${taojinbiDateResult.formatted} 条报名时间格式化为 m月d日。`
+            ? "淘金币工作表已识别，原有报名时间保持不变。"
             : "未识别到淘金币工作表，已跳过淘金币报名时间格式化。",
-          `所有报名时间都会统一显示为 ${todayText()} 这种 m月d日格式；聚划算、国补只给新增行填充日期，已有 ID 只改显示格式、不改日期。首单礼金新增行使用 null 表里的报名时间，报名状态填充为“投放生效中”。`
+          `只有原文件中没有的新增行会填充今日日期 ${todayText()}，日期格式为 m月d日；已有 ID 的报名时间保持原表不变。`
         ]);
         statusText.textContent = "更新完成，可以导出 Excel";
       } catch (error) {
